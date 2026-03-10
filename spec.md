@@ -1,39 +1,32 @@
 # UPI Sound Box
 
 ## Current State
-A UPI Sound Box simulator with:
-- Simulate Payment button that triggers random payment amounts and senders
-- Audio announcement via Web Speech API
-- Flashing LED/device animation on payment
-- Transaction list and today's summary
-- Hardcoded merchant name "Ravi Kirana Store" in SoundBoxDevice
-- No QR code display
-- No multi-app support (transactions just show UPI IDs)
+App has a UPI sound box simulator with payment announcements using Web Speech API in English (en-IN) only. The announce function produces: "Payment received of rupees {amount} from {senderName}".
 
 ## Requested Changes (Diff)
 
 ### Add
-- Merchant settings panel (accessible via a settings icon in header): editable merchant name and UPI ID
-- QR code display tab/section on the device showing a scannable UPI payment QR (generated from upi:// URI using `qrcode` npm package)
-- Payment app badges on transactions: detect app from UPI suffix (@gpay = Google Pay, @ybl/@ibl = PhonePe, @paytm = Paytm, @okaxis/@okicici = others) and show colored badge/icon
-- App filter chips on transaction list (All, PhonePe, Google Pay, Paytm, Others)
-- Merchant name persisted in localStorage
+- Language selector with 7 options: Hindi, English, Bengali, Marathi, Telugu, Kannada, Tamil
+- Language-specific announcement text and speech synthesis lang codes
+- Persist selected language in localStorage
 
 ### Modify
-- SoundBoxDevice: replace hardcoded "Ravi Kirana Store" with dynamic merchant name prop
-- SoundBoxDevice: add a toggle between "Payment" view and "QR Code" view
-- TransactionList: show payment app badge per transaction
-- App.tsx: manage merchant settings state, pass to components
+- `announce()` function in App.tsx to use selected language's text and lang code
+- SoundBoxDevice or header to show a language picker (flag/label chips or a dropdown)
 
 ### Remove
-- Nothing removed
+- Nothing
 
 ## Implementation Plan
-1. Install `qrcode` npm package (or use `qrcode.react`)
-2. Add MerchantSettings component: dialog with name + UPI ID inputs, save to localStorage
-3. Update App.tsx to load/save merchant settings from localStorage
-4. Update SoundBoxDevice to accept merchantName prop and show it dynamically
-5. Add QR code view toggle in SoundBoxDevice using qrcode.react
-6. Add getPaymentApp() utility that maps UPI suffix to app name + color
-7. Update TransactionList to show app badges
-8. Add filter chips to transaction list section in App.tsx
+1. Add a LANGUAGES config with: label, lang code (BCP-47), and announcement template function
+   - English: en-IN, "Payment received of rupees {amount} from {senderName}"
+   - Hindi: hi-IN, "रुपये {amount} का भुगतान प्राप्त हुआ, {senderName} से"
+   - Bengali: bn-IN, "{senderName} থেকে {amount} টাকা পেমেন্ট পাওয়া গেছে"
+   - Marathi: mr-IN, "{senderName} कडून {amount} रुपये प्राप्त झाले"
+   - Telugu: te-IN, "{senderName} నుండి {amount} రూపాయలు చెల్లింపు వచ్చింది"
+   - Kannada: kn-IN, "{senderName} ಇಂದ {amount} ರೂಪಾಯಿ ಪಾವತಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ"
+   - Tamil: ta-IN, "{senderName} இடமிருந்து {amount} ரூபாய் கட்டணம் பெறப்பட்டது"
+2. Add `selectedLang` state in App.tsx, initialized from localStorage
+3. Pass `selectedLang` and `onLangChange` to SoundBoxDevice (or add a language selector in the header)
+4. Render language selector as compact chips/pills in the header or above the device
+5. Update `announce()` to use the selected language config

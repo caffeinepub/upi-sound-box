@@ -12,6 +12,65 @@ import {
   useGetTodaysSummary,
 } from "./hooks/useQueries";
 
+export interface Language {
+  id: string;
+  label: string;
+  lang: string;
+  getText: (amount: string, senderName: string) => string;
+}
+
+export const LANGUAGES: Language[] = [
+  {
+    id: "en",
+    label: "English",
+    lang: "en-IN",
+    getText: (amount, senderName) =>
+      `Payment received of rupees ${amount} from ${senderName}`,
+  },
+  {
+    id: "hi",
+    label: "हिंदी",
+    lang: "hi-IN",
+    getText: (amount, senderName) =>
+      `रुपये ${amount} का भुगतान प्राप्त हुआ, ${senderName} से`,
+  },
+  {
+    id: "bn",
+    label: "বাংলা",
+    lang: "bn-IN",
+    getText: (amount, senderName) =>
+      `${senderName} থেকে ${amount} টাকা পেমেন্ট পাওয়া গেছে`,
+  },
+  {
+    id: "mr",
+    label: "मराठी",
+    lang: "mr-IN",
+    getText: (amount, senderName) =>
+      `${senderName} कडून ${amount} रुपये प्राप्त झाले`,
+  },
+  {
+    id: "te",
+    label: "తెలుగు",
+    lang: "te-IN",
+    getText: (amount, senderName) =>
+      `${senderName} నుండి ${amount} రూపాయలు చెల్లింపు వచ్చింది`,
+  },
+  {
+    id: "kn",
+    label: "ಕನ್ನಡ",
+    lang: "kn-IN",
+    getText: (amount, senderName) =>
+      `${senderName} ಇಂದ ${amount} ರೂಪಾಯಿ ಪಾವತಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ`,
+  },
+  {
+    id: "ta",
+    label: "தமிழ்",
+    lang: "ta-IN",
+    getText: (amount, senderName) =>
+      `${senderName} இடமிருந்து ${amount} ரூபாய் கட்டணம் பெறப்பட்டது`,
+  },
+];
+
 const PAYMENT_AMOUNTS = [
   50, 100, 150, 200, 250, 500, 750, 1000, 1500, 2500, 5000,
 ];
@@ -37,6 +96,9 @@ function UPISoundBox() {
     upiId: string;
   } | null>(null);
   const [newTxId, setNewTxId] = useState<bigint | null>(null);
+  const [selectedLangId, setSelectedLangId] = useState<string>(
+    () => localStorage.getItem("upi_lang") ?? "en",
+  );
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { data: transactions = [], isLoading: txLoading } =
@@ -44,19 +106,25 @@ function UPISoundBox() {
   const { data: summary, isLoading: summaryLoading } = useGetTodaysSummary();
   const addTransaction = useAddTransaction();
 
+  const handleLangChange = useCallback((id: string) => {
+    setSelectedLangId(id);
+    localStorage.setItem("upi_lang", id);
+  }, []);
+
   const announce = useCallback(
     (amount: number, senderName: string) => {
       if (isMuted || !window.speechSynthesis) return;
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(
-        `Payment received of rupees ${amount.toLocaleString("en-IN")} from ${senderName}`,
-      );
-      utterance.lang = "en-IN";
+      const lang =
+        LANGUAGES.find((l) => l.id === selectedLangId) ?? LANGUAGES[0];
+      const text = lang.getText(amount.toLocaleString("en-IN"), senderName);
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = lang.lang;
       utterance.rate = 0.9;
       utterance.volume = 1;
       window.speechSynthesis.speak(utterance);
     },
-    [isMuted],
+    [isMuted, selectedLangId],
   );
 
   const triggerFlash = useCallback(
@@ -158,6 +226,9 @@ function UPISoundBox() {
             onToggleMute={() => setIsMuted((m) => !m)}
             onSimulate={handleSimulate}
             isSimulating={addTransaction.isPending}
+            selectedLangId={selectedLangId}
+            onLangChange={handleLangChange}
+            languages={LANGUAGES}
           />
         </motion.section>
 

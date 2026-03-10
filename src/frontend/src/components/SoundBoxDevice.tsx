@@ -1,3 +1,4 @@
+import type { Language } from "@/App";
 import { Button } from "@/components/ui/button";
 import { Battery, Volume2, VolumeX, Wifi } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -15,6 +16,9 @@ interface SoundBoxDeviceProps {
   onToggleMute: () => void;
   onSimulate: () => void;
   isSimulating: boolean;
+  selectedLangId: string;
+  onLangChange: (id: string) => void;
+  languages: Language[];
 }
 
 const SPEAKER_DOTS = Array.from({ length: 48 }, (_, i) => `dot-${i}`);
@@ -26,6 +30,9 @@ export function SoundBoxDevice({
   onToggleMute,
   onSimulate,
   isSimulating,
+  selectedLangId,
+  onLangChange,
+  languages,
 }: SoundBoxDeviceProps) {
   return (
     <div className="flex flex-col items-center gap-6">
@@ -148,6 +155,30 @@ export function SoundBoxDevice({
           )}
         </AnimatePresence>
       </motion.div>
+
+      {/* Language selector pills */}
+      <div className="w-full max-w-xs">
+        <p className="text-[10px] text-muted-foreground text-center mb-2 tracking-wider uppercase">
+          Announcement Language
+        </p>
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide snap-x">
+          {languages.map((lang, index) => (
+            <button
+              type="button"
+              key={lang.id}
+              data-ocid={`soundbox.lang_tab.${index + 1}`}
+              onClick={() => onLangChange(lang.id)}
+              className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ${
+                selectedLangId === lang.id
+                  ? "bg-primary text-primary-foreground border-primary shadow-glow"
+                  : "bg-card/60 text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+              }`}
+            >
+              {lang.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Controls */}
       <div className="flex items-center gap-3">
