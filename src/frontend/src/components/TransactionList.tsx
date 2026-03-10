@@ -1,6 +1,28 @@
 import { CheckCircle2, Clock } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useState } from "react";
 import type { Transaction } from "../backend.d";
+
+type FilterChip = "All" | "PhonePe" | "Google Pay" | "Paytm" | "Axis Bank";
+
+const FILTER_CHIPS: FilterChip[] = [
+  "All",
+  "PhonePe",
+  "Google Pay",
+  "Paytm",
+  "Axis Bank",
+];
+
+function matchesFilter(tx: Transaction, filter: FilterChip): boolean {
+  if (filter === "All") return true;
+  const id = tx.upiId.toLowerCase();
+  if (filter === "PhonePe") return id.includes("ybl") || id.includes("phonepe");
+  if (filter === "Google Pay")
+    return id.includes("gpay") || id.includes("okicici");
+  if (filter === "Paytm") return id.includes("paytm");
+  if (filter === "Axis Bank") return id.includes("okaxis");
+  return true;
+}
 
 function timeAgo(timestamp: bigint): string {
   const now = Date.now();
@@ -22,8 +44,8 @@ function upiColor(upiId: string): string {
   if (upiId.includes("paytm")) return "text-blue-400";
   if (upiId.includes("ybl") || upiId.includes("phonepe"))
     return "text-purple-400";
-  if (upiId.includes("gpay") || upiId.includes("okaxis"))
-    return "text-green-400";
+  if (upiId.includes("gpay")) return "text-green-400";
+  if (upiId.includes("okaxis")) return "text-amber-400";
   return "text-primary";
 }
 
@@ -55,6 +77,10 @@ export function TransactionList({
   isLoading,
   newTxId,
 }: TransactionListProps) {
+  const [activeFilter, setActiveFilter] = useState<FilterChip>("All");
+
+  const filtered = transactions.filter((tx) => matchesFilter(tx, activeFilter));
+
   return (
     <div>
       <div className="flex items-center justify-between mb-3">
@@ -63,9 +89,28 @@ export function TransactionList({
         </h2>
         {transactions.length > 0 && (
           <span className="text-xs text-muted-foreground">
-            {transactions.length} total
+            {filtered.length}/{transactions.length}
           </span>
         )}
+      </div>
+
+      {/* Filter Chips */}
+      <div className="flex gap-1.5 overflow-x-auto pb-2 mb-3 scrollbar-hide snap-x">
+        {FILTER_CHIPS.map((chip, idx) => (
+          <button
+            key={chip}
+            type="button"
+            data-ocid={`transactions.filter_tab.${idx + 1}`}
+            onClick={() => setActiveFilter(chip)}
+            className={`flex-shrink-0 snap-start px-3 py-1 rounded-full text-xs font-medium border transition-all duration-150 ${
+              activeFilter === chip
+                ? "bg-primary text-primary-foreground border-primary shadow-glow"
+                : "bg-card/60 text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+            }`}
+          >
+            {chip}
+          </button>
+        ))}
       </div>
 
       <div data-ocid="transactions.list" className="space-y-2">
@@ -79,7 +124,7 @@ export function TransactionList({
               />
             ))}
           </>
-        ) : transactions.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <div
             data-ocid="transactions.empty_state"
             className="bg-card border border-border rounded-2xl py-12 text-center"
@@ -87,14 +132,20 @@ export function TransactionList({
             <div className="w-12 h-12 rounded-full bg-muted/60 flex items-center justify-center mx-auto mb-3">
               <Clock size={20} className="text-muted-foreground" />
             </div>
-            <p className="text-sm text-muted-foreground">No transactions yet</p>
+            <p className="text-sm text-muted-foreground">
+              {activeFilter === "All"
+                ? "No transactions yet"
+                : `No ${activeFilter} transactions`}
+            </p>
             <p className="text-xs text-muted-foreground/60 mt-1">
-              Simulate a payment to get started
+              {activeFilter === "All"
+                ? "Payments will appear here"
+                : "Try a different filter"}
             </p>
           </div>
         ) : (
           <AnimatePresence initial={false}>
-            {transactions.map((tx, idx) => (
+            {filtered.map((tx, idx) => (
               <motion.div
                 key={tx.id.toString()}
                 data-ocid={`transactions.item.${idx + 1}`}

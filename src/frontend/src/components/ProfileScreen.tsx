@@ -4,17 +4,20 @@ import {
   BarChart3,
   BellRing,
   CheckCircle2,
+  Clock,
   Crown,
   HeadphonesIcon,
+  Info,
   ShieldCheck,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 interface ProfileScreenProps {
   phone: string;
   onBack: () => void;
+  onPlanCancelled?: () => void;
 }
 
 type Plan = "trial" | "monthly" | null;
@@ -26,10 +29,48 @@ const FEATURES = [
   { id: "support", icon: HeadphonesIcon, label: "24/7 Support" },
 ];
 
-export function ProfileScreen({ phone, onBack }: ProfileScreenProps) {
+function getTrialDaysRemaining(): number | null {
+  const trialStart = localStorage.getItem("upi_trial_start");
+  if (!trialStart) return null;
+  const elapsed = Date.now() - Number(trialStart);
+  const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
+  const remaining = Math.ceil((threeDaysMs - elapsed) / (24 * 60 * 60 * 1000));
+  return Math.max(0, remaining);
+}
+
+export function ProfileScreen({
+  phone,
+  onBack,
+  onPlanCancelled,
+}: ProfileScreenProps) {
   const [activePlan, setActivePlan] = useState<Plan>(
     () => (localStorage.getItem("upi_premium_plan") as Plan) ?? null,
   );
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(
+    getTrialDaysRemaining,
+  );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const plan = localStorage.getItem("upi_premium_plan") as Plan;
+      setActivePlan(plan);
+      if (plan === "trial") {
+        const days = getTrialDaysRemaining();
+        setTrialDaysLeft(days);
+        if (days === 0) {
+          // Auto-transition
+          localStorage.setItem("upi_premium_plan", "monthly");
+          localStorage.removeItem("upi_trial_start");
+          setActivePlan("monthly");
+          setTrialDaysLeft(null);
+          toast.info("Trial khatam! ₹49 Autopay shuru ho gaya. 🔄", {
+            duration: 5000,
+          });
+        }
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const memberSince = (() => {
     let d = localStorage.getItem("upi_member_since");
@@ -44,23 +85,41 @@ export function ProfileScreen({ phone, onBack }: ProfileScreenProps) {
     });
   })();
 
+  const trialEndDate = (() => {
+    const ts = localStorage.getItem("upi_trial_start");
+    if (!ts) return null;
+    const d = new Date(Number(ts) + 3 * 24 * 60 * 60 * 1000);
+    return d.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  })();
+
   const maskedPhone = `******${phone.slice(-4)}`;
   const initials = phone.slice(-2).toUpperCase();
 
   const handleActivate = (plan: "trial" | "monthly") => {
     localStorage.setItem("upi_premium_plan", plan);
+    if (plan === "trial") {
+      localStorage.setItem("upi_trial_start", String(Date.now()));
+      setTrialDaysLeft(3);
+    }
     setActivePlan(plan);
     toast.success(
       plan === "trial"
-        ? "3 \u0926\u093f\u0928 \u0915\u093e Free Trial activate \u0939\u094b \u0917\u092f\u093e! \ud83c\udf89"
-        : "Monthly Plan Autopay activate \u0939\u094b \u0917\u092f\u093e! \u26a1",
+        ? "3 दिन का Trial activate! 3 din baad ₹49 Autopay shuru hoga. 🎉"
+        : "Monthly Autopay activate ho gaya! ⚡",
     );
   };
 
   const handleCancel = () => {
     localStorage.removeItem("upi_premium_plan");
+    localStorage.removeItem("upi_trial_start");
     setActivePlan(null);
-    toast.success("Plan cancel \u0939\u094b \u0917\u092f\u093e");
+    setTrialDaysLeft(null);
+    toast.success("Plan cancel ho gaya");
+    onPlanCancelled?.();
   };
 
   return (
@@ -131,6 +190,40 @@ export function ProfileScreen({ phone, onBack }: ProfileScreenProps) {
           </div>
         </motion.div>
 
+        {/* Trial Countdown Banner */}
+        <AnimatePresence>
+          {activePlan === "trial" && trialDaysLeft !== null && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex items-start gap-3 px-4 py-3 rounded-2xl"
+              style={{
+                background: "oklch(0.72 0.2 45 / 0.1)",
+                border: "1px solid oklch(0.72 0.2 45 / 0.25)",
+              }}
+            >
+              <Clock
+                className="w-4 h-4 flex-shrink-0 mt-0.5"
+                style={{ color: "oklch(0.72 0.2 45)" }}
+              />
+              <div className="text-xs" style={{ color: "oklch(0.55 0.15 45)" }}>
+                <p className="font-semibold">
+                  {trialDaysLeft === 0
+                    ? "Aaj trial khatam ho raha hai!"
+                    : `Trial mein ${trialDaysLeft} din bache hain`}
+                </p>
+                {trialEndDate && (
+                  <p className="mt-0.5 text-muted-foreground">
+                    {trialEndDate} ko <strong>₹49/month Autopay</strong> apne
+                    aap shuru hoga
+                  </p>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Premium Plans */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -160,17 +253,17 @@ export function ProfileScreen({ phone, onBack }: ProfileScreenProps) {
                     className="text-[11px] font-bold px-2.5 py-0.5 rounded-full"
                     style={{ background: "oklch(0.72 0.2 45)", color: "white" }}
                   >
-                    \ud83d\udd25 Most Popular
+                    🔥 Most Popular
                   </span>
                 </div>
 
                 <div className="flex items-start justify-between mt-2">
                   <div>
                     <p className="font-display font-bold text-foreground text-base">
-                      3 \u0926\u093f\u0928 \u0915\u093e Trial
+                      3 दिन का Trial
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      Try \u0915\u0930\u0947\u0902, risk-free
+                      Try करें, risk-free
                     </p>
                   </div>
                   <div className="text-right">
@@ -178,10 +271,24 @@ export function ProfileScreen({ phone, onBack }: ProfileScreenProps) {
                       className="font-display font-bold text-2xl"
                       style={{ color: "oklch(0.75 0.18 60)" }}
                     >
-                      \u20b91
+                      ₹1
                     </p>
                     <p className="text-xs text-muted-foreground">3 days only</p>
                   </div>
+                </div>
+
+                {/* Autopay Notice */}
+                <div
+                  className="flex items-start gap-2 mt-3 px-3 py-2 rounded-xl text-xs"
+                  style={{
+                    background: "oklch(0.72 0.2 45 / 0.07)",
+                    color: "oklch(0.5 0.12 45)",
+                  }}
+                >
+                  <Info className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                  <span>
+                    3 din baad <strong>₹49/month Autopay</strong> shuru hoga
+                  </span>
                 </div>
 
                 <AnimatePresence mode="wait">
@@ -197,7 +304,7 @@ export function ProfileScreen({ phone, onBack }: ProfileScreenProps) {
                       }}
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      Current Plan \u00b7 Active \u2713
+                      Current Plan · Active ✓
                     </motion.div>
                   ) : (
                     <motion.div
@@ -217,7 +324,7 @@ export function ProfileScreen({ phone, onBack }: ProfileScreenProps) {
                           border: "none",
                         }}
                       >
-                        Activate \u2014 \u20b91 \u092e\u0947\u0902
+                        Activate — ₹1 में (Autopay)
                       </Button>
                     </motion.div>
                   )}
@@ -246,7 +353,7 @@ export function ProfileScreen({ phone, onBack }: ProfileScreenProps) {
                       color: "white",
                     }}
                   >
-                    \u26a1 Autopay
+                    ⚡ Autopay
                   </span>
                 </div>
 
@@ -264,7 +371,7 @@ export function ProfileScreen({ phone, onBack }: ProfileScreenProps) {
                       className="font-display font-bold text-2xl"
                       style={{ color: "oklch(0.65 0.17 165)" }}
                     >
-                      \u20b949
+                      ₹49
                     </p>
                     <p className="text-xs text-muted-foreground">per month</p>
                   </div>
@@ -283,7 +390,7 @@ export function ProfileScreen({ phone, onBack }: ProfileScreenProps) {
                       }}
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      Current Plan \u00b7 Active \u2713
+                      Current Plan · Active ✓
                     </motion.div>
                   ) : (
                     <motion.div
@@ -303,7 +410,7 @@ export function ProfileScreen({ phone, onBack }: ProfileScreenProps) {
                           border: "none",
                         }}
                       >
-                        Activate Autopay \u2014 \u20b949/mo
+                        Activate Autopay — ₹49/mo
                       </Button>
                     </motion.div>
                   )}

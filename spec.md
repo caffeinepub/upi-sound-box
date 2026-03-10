@@ -1,29 +1,27 @@
 # UPI Sound Box
 
 ## Current State
-App has phone OTP login, UPI sound box with auto payments, transaction list, summary card, language toggle, volume slider. Header has logo, live indicator, masked phone, and logout button.
+App has a NotificationPanel (bell icon in header) as a slide-out sheet showing payment notifications with read/unread state, mark all read, and battery save toggle. Notifications are stored in localStorage.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Profile tab/screen accessible from header (user icon button)
-- Profile screen shows: user phone number, member since date
-- Premium subscription section on profile screen:
-  - Trial plan: ₹1 for 3 days
-  - Monthly plan: ₹49/month with Autopay badge
-  - Plan selection cards with CTA button (simulated, no real payment)
-  - Active plan indicator once selected (stored in localStorage)
+- Dedicated "Notifications" tab in the main app navigation
+- Full-page NotificationsView component with:
+  - Filter tabs: All / Unread / Read
+  - Clear all notifications button
+  - Per-notification read/unread toggle with tap-to-mark-read
+  - Empty states per filter
+- Notification access count badge on the tab itself when unread notifications exist
 
 ### Modify
-- Header: add profile icon button next to logout button that opens profile screen
-- App navigation: toggle between main soundbox view and profile screen
+- App.tsx: add Notifications tab alongside existing content, wire notification state to NotificationsView
+- NotificationPanel header bell: keep as quick-access overlay, badge stays
 
 ### Remove
-- Nothing
+- Nothing removed
 
 ## Implementation Plan
-1. Create `ProfileScreen.tsx` component with user info and premium plan cards
-2. Add profile icon button to header in `App.tsx`
-3. Add state to toggle between main view and profile view
-4. Store selected plan in localStorage (`upi_premium_plan`)
-5. Show active plan badge in header or profile screen
+1. Create `NotificationsView.tsx` with filter tabs (All/Unread/Read), notification list, clear all, mark all read
+2. Update `App.tsx` to add a bottom tab bar or top tabs with Notifications as a dedicated tab
+3. Wire existing notification state and handlers to new view
