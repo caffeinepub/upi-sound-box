@@ -1,6 +1,7 @@
 import type { Language } from "@/App";
 import { Button } from "@/components/ui/button";
-import { Battery, Volume2, VolumeX, Wifi } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Battery, Play, Volume2, VolumeX, Wifi } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 
 interface PaymentFlash {
@@ -14,25 +15,36 @@ interface SoundBoxDeviceProps {
   lastPayment: PaymentFlash | null;
   isMuted: boolean;
   onToggleMute: () => void;
-  onSimulate: () => void;
-  isSimulating: boolean;
   selectedLangId: string;
   onLangChange: (id: string) => void;
   languages: Language[];
+  volume: number;
+  onVolumeChange: (v: number) => void;
 }
 
 const SPEAKER_DOTS = Array.from({ length: 48 }, (_, i) => `dot-${i}`);
+
+function previewLanguage(lang: Language, volume: number) {
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const text = lang.getText("500", "Demo");
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = lang.lang;
+  utterance.rate = 0.9;
+  utterance.volume = volume;
+  window.speechSynthesis.speak(utterance);
+}
 
 export function SoundBoxDevice({
   isFlashing,
   lastPayment,
   isMuted,
   onToggleMute,
-  onSimulate,
-  isSimulating,
   selectedLangId,
   onLangChange,
   languages,
+  volume,
+  onVolumeChange,
 }: SoundBoxDeviceProps) {
   return (
     <div className="flex flex-col items-center gap-6">
@@ -163,25 +175,43 @@ export function SoundBoxDevice({
         </p>
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide snap-x">
           {languages.map((lang, index) => (
-            <button
-              type="button"
+            <div
               key={lang.id}
-              data-ocid={`soundbox.lang_tab.${index + 1}`}
-              onClick={() => onLangChange(lang.id)}
-              className={`flex-shrink-0 snap-start px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border ${
-                selectedLangId === lang.id
-                  ? "bg-primary text-primary-foreground border-primary shadow-glow"
-                  : "bg-card/60 text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
-              }`}
+              className="flex-shrink-0 snap-start flex items-center gap-0.5"
             >
-              {lang.label}
-            </button>
+              <button
+                type="button"
+                data-ocid={`soundbox.lang_tab.${index + 1}`}
+                onClick={() => onLangChange(lang.id)}
+                className={`px-3 py-1.5 rounded-l-full text-xs font-medium transition-all duration-200 border-y border-l ${
+                  selectedLangId === lang.id
+                    ? "bg-primary text-primary-foreground border-primary shadow-glow"
+                    : "bg-card/60 text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+                }`}
+              >
+                {lang.label}
+              </button>
+              <button
+                type="button"
+                data-ocid={`soundbox.lang_preview_button.${index + 1}`}
+                onClick={() => previewLanguage(lang, isMuted ? 0 : volume)}
+                title={`Preview ${lang.label}`}
+                className={`px-2 py-1.5 rounded-r-full text-xs transition-all duration-200 border-y border-r ${
+                  selectedLangId === lang.id
+                    ? "bg-primary/80 text-primary-foreground border-primary hover:bg-primary"
+                    : "bg-card/60 text-muted-foreground border-border hover:border-primary/50 hover:text-primary hover:bg-card"
+                }`}
+              >
+                <Play size={10} className="fill-current" />
+              </button>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center gap-3">
+      {/* Controls — mute + volume */}
+      <div className="w-full max-w-xs flex flex-col items-center gap-3">
+        {/* Mute button */}
         <Button
           data-ocid="soundbox.mute_toggle"
           variant="outline"
@@ -197,21 +227,25 @@ export function SoundBoxDevice({
           )}
         </Button>
 
-        <Button
-          data-ocid="soundbox.simulate_button"
-          onClick={onSimulate}
-          disabled={isSimulating}
-          className="font-display font-semibold px-8 h-11 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-glow transition-all disabled:opacity-60"
+        {/* Volume slider */}
+        <div
+          className={`w-full flex items-center gap-3 px-1 transition-opacity duration-200 ${isMuted ? "opacity-40 pointer-events-none" : "opacity-100"}`}
         >
-          {isSimulating ? (
-            <span className="flex items-center gap-2">
-              <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin inline-block" />
-              Processing…
-            </span>
-          ) : (
-            "Simulate Payment"
-          )}
-        </Button>
+          <Volume2 size={12} className="text-muted-foreground flex-shrink-0" />
+          <Slider
+            data-ocid="soundbox.volume_slider"
+            min={0}
+            max={100}
+            step={1}
+            value={[Math.round(volume * 100)]}
+            onValueChange={([val]) => onVolumeChange(val / 100)}
+            disabled={isMuted}
+            className="flex-1"
+          />
+          <span className="text-[11px] text-muted-foreground w-8 text-right flex-shrink-0">
+            {Math.round(volume * 100)}%
+          </span>
+        </div>
       </div>
     </div>
   );
