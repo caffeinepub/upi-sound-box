@@ -1,0 +1,170 @@
+@font-face {
+  font-family: "Sora";
+  src: url("/assets/fonts/Sora.woff2") format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Cabinet Grotesk";
+  src: url("/assets/fonts/CabinetGrotesk.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0.13 0.025 255;
+    --foreground: 0.95 0.01 255;
+    --card: 0.17 0.028 255;
+    --card-foreground: 0.95 0.01 255;
+    --popover: 0.17 0.028 255;
+    --popover-foreground: 0.95 0.01 255;
+    --primary: 0.72 0.17 165;
+    --primary-foreground: 0.1 0.01 165;
+    --secondary: 0.22 0.03 255;
+    --secondary-foreground: 0.85 0.02 255;
+    --muted: 0.2 0.025 255;
+    --muted-foreground: 0.55 0.025 255;
+    --accent: 0.72 0.17 165;
+    --accent-foreground: 0.1 0.01 165;
+    --destructive: 0.62 0.22 25;
+    --destructive-foreground: 0.98 0.01 25;
+    --border: 0.24 0.03 255;
+    --input: 0.24 0.03 255;
+    --ring: 0.72 0.17 165;
+    --radius: 0.75rem;
+    --chart-1: 0.72 0.17 165;
+    --chart-2: 0.65 0.15 200;
+    --chart-3: 0.7 0.18 130;
+    --chart-4: 0.68 0.16 250;
+    --chart-5: 0.62 0.18 60;
+    --sidebar: 0.15 0.025 255;
+    --sidebar-foreground: 0.95 0.01 255;
+    --sidebar-primary: 0.72 0.17 165;
+    --sidebar-primary-foreground: 0.1 0.01 165;
+    --sidebar-accent: 0.2 0.025 255;
+    --sidebar-accent-foreground: 0.85 0.02 255;
+    --sidebar-border: 0.24 0.03 255;
+    --sidebar-ring: 0.72 0.17 165;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Sora", sans-serif;
+  }
+}
+
+@keyframes led-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 6px 2px oklch(0.72 0.17 165 / 0.8);
+  }
+  50% {
+    opacity: 0.5;
+    box-shadow: 0 0 3px 1px oklch(0.72 0.17 165 / 0.3);
+  }
+}
+
+@keyframes payment-flash {
+  0% {
+    box-shadow: 0 0 0 0 oklch(0.72 0.17 165 / 0.8);
+  }
+  50% {
+    box-shadow: 0 0 40px 20px oklch(0.72 0.17 165 / 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.72 0.17 165 / 0);
+  }
+}
+
+@keyframes amount-pop {
+  0% {
+    transform: scale(0.7);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-led-pulse {
+  animation: led-pulse 2s ease-in-out infinite;
+}
+
+.animate-payment-flash {
+  animation: payment-flash 0.6s ease-out forwards;
+}
+
+.animate-amount-pop {
+  animation: amount-pop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.35s ease-out forwards;
+}
+
+.speaker-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 5px;
+}
+
+.speaker-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: oklch(0.3 0.03 255);
+}
+
+.device-surface {
+  background: linear-gradient(
+    145deg,
+    oklch(0.22 0.03 255) 0%,
+    oklch(0.18 0.025 255) 40%,
+    oklch(0.15 0.02 255) 100%
+  );
+}
+
+.amount-glow {
+  text-shadow: 0 0 30px oklch(0.72 0.17 165 / 0.6);
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: oklch(0.3 0.03 255);
+  border-radius: 2px;
+}

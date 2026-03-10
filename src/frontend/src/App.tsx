@@ -1,0 +1,204 @@
+import { Toaster } from "@/components/ui/sonner";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { motion } from "motion/react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { SoundBoxDevice } from "./components/SoundBoxDevice";
+import { SummaryCard } from "./components/SummaryCard";
+import { TransactionList } from "./components/TransactionList";
+import {
+  useAddTransaction,
+  useGetAllTransactions,
+  useGetTodaysSummary,
+} from "./hooks/useQueries";
+
+const PAYMENT_AMOUNTS = [
+  50, 100, 150, 200, 250, 500, 750, 1000, 1500, 2500, 5000,
+];
+const PAYMENT_UPIS = [
+  { upiId: "rajesh.kumar@paytm", name: "Rajesh Kumar" },
+  { upiId: "priya.sharma@ybl", name: "Priya Sharma" },
+  { upiId: "9876543210@ybl", name: "Amit Verma" },
+  { upiId: "deepak.singh@gpay", name: "Deepak Singh" },
+  { upiId: "sunita.devi@paytm", name: "Sunita Devi" },
+  { upiId: "mohan.lal@okaxis", name: "Mohan Lal" },
+  { upiId: "anita.joshi@upi", name: "Anita Joshi" },
+  { upiId: "vikram.patel@ybl", name: "Vikram Patel" },
+];
+
+const queryClient = new QueryClient();
+
+function UPISoundBox() {
+  const [isMuted, setIsMuted] = useState(false);
+  const [isFlashing, setIsFlashing] = useState(false);
+  const [lastPayment, setLastPayment] = useState<{
+    amount: number;
+    sender: string;
+    upiId: string;
+  } | null>(null);
+  const [newTxId, setNewTxId] = useState<bigint | null>(null);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { data: transactions = [], isLoading: txLoading } =
+    useGetAllTransactions();
+  const { data: summary, isLoading: summaryLoading } = useGetTodaysSummary();
+  const addTransaction = useAddTransaction();
+
+  const announce = useCallback(
+    (amount: number, senderName: string) => {
+      if (isMuted || !window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(
+        `Payment received of rupees ${amount.toLocaleString("en-IN")} from ${senderName}`,
+      );
+      utterance.lang = "en-IN";
+      utterance.rate = 0.9;
+      utterance.volume = 1;
+      window.speechSynthesis.speak(utterance);
+    },
+    [isMuted],
+  );
+
+  const triggerFlash = useCallback(
+    (amount: number, sender: string, upiId: string) => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+      setLastPayment({ amount, sender, upiId });
+      setIsFlashing(true);
+      flashTimerRef.current = setTimeout(() => {
+        setIsFlashing(false);
+      }, 3000);
+    },
+    [],
+  );
+
+  const handleSimulate = useCallback(async () => {
+    const randomAmount =
+      PAYMENT_AMOUNTS[Math.floor(Math.random() * PAYMENT_AMOUNTS.length)];
+    const randomPayer =
+      PAYMENT_UPIS[Math.floor(Math.random() * PAYMENT_UPIS.length)];
+
+    try {
+      const id = await addTransaction.mutateAsync({
+        amount: BigInt(randomAmount),
+        upiId: randomPayer.upiId,
+        senderName: randomPayer.name,
+      });
+      setNewTxId(id);
+      triggerFlash(randomAmount, randomPayer.name, randomPayer.upiId);
+      announce(randomAmount, randomPayer.name);
+      toast.success(
+        `₹${randomAmount.toLocaleString("en-IN")} received from ${randomPayer.name}`,
+        {
+          duration: 3000,
+        },
+      );
+    } catch {
+      toast.error("Failed to process payment. Try again.");
+    }
+  }, [addTransaction, triggerFlash, announce]);
+
+  // Clear newTxId highlight after a bit
+  useEffect(() => {
+    if (newTxId === null) return;
+    const t = setTimeout(() => setNewTxId(null), 4000);
+    return () => clearTimeout(t);
+  }, [newTxId]);
+
+  useEffect(() => {
+    return () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    };
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Background texture */}
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,oklch(0.72_0.17_165_/_0.08),transparent)] pointer-events-none" />
+      <div className="fixed inset-0 bg-[radial-gradient(ellipse_50%_50%_at_80%_80%,oklch(0.65_0.15_200_/_0.05),transparent)] pointer-events-none" />
+
+      {/* Header */}
+      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-md border-b border-border">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <img
+              src="/assets/generated/soundbox-logo-transparent.dim_120x120.png"
+              alt="UPI Sound Box"
+              className="w-7 h-7 object-contain"
+            />
+            <span className="font-display font-bold text-foreground">
+              UPI SoundBox
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-primary animate-led-pulse inline-block" />
+            <span className="text-xs text-muted-foreground">Live</span>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-md mx-auto px-4 py-6 space-y-6">
+        {/* Summary */}
+        <SummaryCard
+          totalAmount={Number(summary?.totalAmount ?? 0n)}
+          count={Number(summary?.transactionCount ?? 0n)}
+          isLoading={summaryLoading}
+        />
+
+        {/* Sound Box Device */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="flex flex-col items-center py-4"
+        >
+          <SoundBoxDevice
+            isFlashing={isFlashing}
+            lastPayment={lastPayment}
+            isMuted={isMuted}
+            onToggleMute={() => setIsMuted((m) => !m)}
+            onSimulate={handleSimulate}
+            isSimulating={addTransaction.isPending}
+          />
+        </motion.section>
+
+        {/* Transaction list */}
+        <motion.section
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.25 }}
+        >
+          <TransactionList
+            transactions={transactions}
+            isLoading={txLoading}
+            newTxId={newTxId}
+          />
+        </motion.section>
+      </main>
+
+      {/* Footer */}
+      <footer className="max-w-md mx-auto px-4 py-6 text-center">
+        <p className="text-xs text-muted-foreground/50">
+          © {new Date().getFullYear()}. Built with ❤️ using{" "}
+          <a
+            href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-muted-foreground transition-colors"
+          >
+            caffeine.ai
+          </a>
+        </p>
+      </footer>
+
+      <Toaster position="top-center" />
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <UPISoundBox />
+    </QueryClientProvider>
+  );
+}
